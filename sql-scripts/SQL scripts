@@ -1,0 +1,64 @@
+01_data_ingestion.sql
+/* TASK: DATA INGESTION
+Loading US State and Region mapping from Google Cloud Storage.
+This establishes the geographic foundation for the relational model.
+*/
+
+LOAD DATA OVERWRITE fintech.state_region
+(
+  state STRING,
+  subregion STRING,
+  region STRING
+)
+FROM FILES (
+  format = 'CSV',
+  uris = ['gs://sureskills-lab-dev/future-workforce/da-capstone/temp_35_us/state_region_mapping/state_region_*.csv']
+); [cite: 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+02_data_transformation.sql
+/* TASK: DEDUPLICATION & NESTED DATA
+Extracting 'purpose' from the nested 'application' struct 
+to create a clean, distinct reference table.
+*/
+
+-- Step 1: Querying nested purpose from application struct
+SELECT 
+    loan_id,
+    application.purpose [cite: 20]
+FROM 
+    fintech.loan; [cite: 21]
+
+-- Step 2: Creating a deduplicated reference table for Loan Purposes
+CREATE OR REPLACE TABLE fintech.loan_purposes AS
+SELECT DISTINCT
+    application.purpose [cite: 23, 24, 25]
+FROM
+    fintech.loan; [cite: 26, 27]
+
+03_business_aggregations.sql
+/* TASK: AGGREGATIONS & RELATIONAL JOINS
+Creating derived tables to track loan volume by year 
+and mapping loans to geographic regions.
+*/
+
+-- Query A: Creating a derived table for loan volume trends
+CREATE OR REPLACE TABLE fintech.loan_count_by_year AS
+SELECT 
+    issue_year, 
+    COUNT(loan_id) AS total_count [cite: 34, 35]
+FROM 
+    fintech.loan [cite: 36]
+GROUP BY 
+    issue_year; [cite: 37]
+
+-- Query B: Joining Loan data with State/Region mapping
+SELECT
+    lo.loan_id,
+    lo.loan_amount,
+    sr.region [cite: 12, 13, 14, 15]
+FROM 
+    fintech.loan lo
+INNER JOIN 
+    fintech.state_region sr [cite: 16, 17]
+ON 
+    lo.state = sr.state; [cite: 18]
